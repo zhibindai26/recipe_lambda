@@ -1,5 +1,4 @@
 from io import StringIO
-import requests
 import boto3
 import pandas as pd
 
@@ -10,24 +9,66 @@ S3_BUCKET = "zd-basic-bucket"
 def get_df():
     """ Download recipe CSV from S3 and convert it to a Dataframe """
 
-    s3 = boto3.resource('s3')
-    response = s3.get_object(BUCKET=S3_BUCKET, KEY=RECIPE_CSV)
+    s3 = boto3.client('s3')
+    response = s3.get_object(Bucket=S3_BUCKET, Key=RECIPE_CSV)
 
     recipe_csv = response["Body"]
 
-    df = pd.read_csv(recipe_csv, index_col=0)
-    
+    df = pd.read_csv(recipe_csv, index_col=0).astype({'Page': str})
+
     return df
 
 
-def write_df_to_csv_on_s3(dataframe):
+def search_df(search_dict):
+
+    df = get_df()
+
+    recipe = search_dict["Recipe"].lower()
+    food_type = search_dict["Type"]
+    ingredient = search_dict["Main_Ingredient"]
+    cuisine = search_dict["Cuisine"]
+    source = search_dict["Source"]
+    sample = search_dict["Sample"]
+
+    if recipe:
+        recipe_df = df[df['Recipe'].str.contains(recipe, case=False, na=False)]
+    else:
+        recipe_df = df
+
+    if food_type:
+        type_df = recipe_df[recipe_df['Type'] == food_type]
+    else:
+        type_df = recipe_df
+
+    if ingredient:
+        ingredient_df = type_df[type_df['Ingredient'] == ingredient]
+    else:
+        ingredient_df = type_df
+
+    if cuisine:
+        cuisine_df = ingredient_df[ingredient_df['Cuisine'] == cuisine]
+    else:
+        cuisine_df = ingredient_df
+
+    if source:
+        source_df = cuisine_df[cuisine_df['Source'] == source]
+    else:
+        source_df = cuisine_df
+
+    if sample > len(df):
+        return source_df.sample(sample)
+    else:
+        return source_df
+
+
+def write_df_to_csv_on_s3(df):
     """ Write a dataframe to a CSV on S3 """
 
     # Create buffer
     csv_buffer = StringIO()
 
     # Write dataframe to buffer
-    dataframe.to_csv(csv_buffer, sep=",")
+    df.to_csv(csv_buffer, sep=",")
 
     # Create S3 object
     s3 = boto3.resource("s3")
@@ -36,3 +77,13 @@ def write_df_to_csv_on_s3(dataframe):
     s3.Object(S3_BUCKET, RECIPE_CSV).put(Body=csv_buffer.getvalue())
 
 
+search = {
+    "Recipe": "chicken",
+    "Type": "Meal",
+    "Main_Ingredient": "",
+    "Cuisine": "Asian",
+    "Source": "",
+    "Sample": 5
+}
+
+search_df(search)
