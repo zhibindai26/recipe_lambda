@@ -6,59 +6,92 @@ RECIPE_CSV = "recipes.csv"
 S3_BUCKET = "zd-basic-bucket"
 
 
-def get_df():
+def download_recipes():
     """ Download recipe CSV from S3 and convert it to a Dataframe """
 
     s3 = boto3.client('s3')
     response = s3.get_object(Bucket=S3_BUCKET, Key=RECIPE_CSV)
-
     recipe_csv = response["Body"]
 
     df = pd.read_csv(recipe_csv, index_col=0).astype({'Page': str})
-
     return df
 
 
-def search_df(search_dict):
+def find_recipes(search_dict):
 
-    df = get_df()
+    try:
+        recipes_df = download_recipes()
+        recipe = search_dict["Recipe"].lower()
+        food_type = search_dict["Type"]
+        ingredient = search_dict["Main_Ingredient"]
+        cuisine = search_dict["Cuisine"]
+        source = search_dict["Source"]
+        sample = search_dict["Sample"]
 
-    recipe = search_dict["Recipe"].lower()
-    food_type = search_dict["Type"]
-    ingredient = search_dict["Main_Ingredient"]
-    cuisine = search_dict["Cuisine"]
-    source = search_dict["Source"]
-    sample = search_dict["Sample"]
+        if recipe:
+            recipe_df = recipes_df[recipes_df['Recipe'].str.contains(recipe, case=False, na=False)]
+        else:
+            recipe_df = recipes_df
 
-    if recipe:
-        recipe_df = df[df['Recipe'].str.contains(recipe, case=False, na=False)]
-    else:
-        recipe_df = df
+        if food_type:
+            type_df = recipe_df[recipe_df['Type'] == food_type]
+        else:
+            type_df = recipe_df
 
-    if food_type:
-        type_df = recipe_df[recipe_df['Type'] == food_type]
-    else:
-        type_df = recipe_df
+        if ingredient:
+            ingredient_df = type_df[type_df['Ingredient'] == ingredient]
+        else:
+            ingredient_df = type_df
 
-    if ingredient:
-        ingredient_df = type_df[type_df['Ingredient'] == ingredient]
-    else:
-        ingredient_df = type_df
+        if cuisine:
+            cuisine_df = ingredient_df[ingredient_df['Cuisine'] == cuisine]
+        else:
+            cuisine_df = ingredient_df
 
-    if cuisine:
-        cuisine_df = ingredient_df[ingredient_df['Cuisine'] == cuisine]
-    else:
-        cuisine_df = ingredient_df
+        if source:
+            source_df = cuisine_df[cuisine_df['Source'] == source]
+        else:
+            source_df = cuisine_df
 
-    if source:
-        source_df = cuisine_df[cuisine_df['Source'] == source]
-    else:
-        source_df = cuisine_df
+        if len(recipes_df) > 0:
+            final_json = {
+                "status_code": 200,
+                "message": "Recipes found",
+                "body": ""
+            }
+            if len(recipes_df) > sample:
+                final_json["body"] = source_df.sample(sample).to_json(orient='records')
+                return final_json
+            else:
+                final_json["body"] = source_df.to_json(orient='records')
+                return final_json
+        else:
+            return {
+                "status_code": 404,
+                "message": "No recipes found",
+                "body": ""
+            }
+    except Exception as e:
+        return {
+            "status_code": 400,
+            "message": str(e)
+        }
 
-    if sample > len(df):
-        return source_df.sample(sample)
-    else:
-        return source_df
+
+def add_recipe(new_recipe):
+    try:
+        recipes_df = download_recipes()
+        updated_recipes_df = recipes_df.append(new_recipe, ignore_index=True)
+        write_df_to_csv_on_s3(updated_recipes_df)
+        return {
+            "status_code": 200,
+            "message": f"{new_recipe['Recipe']} added to recipes list"
+        }
+    except Exception as e:
+        return {
+            "status_code": 400,
+            "message": f"Adding new recipe failed: {e}"
+        }
 
 
 def write_df_to_csv_on_s3(df):
@@ -78,7 +111,7 @@ def write_df_to_csv_on_s3(df):
 
 
 search = {
-    "Recipe": "chicken",
+    "Recipe": "",
     "Type": "Meal",
     "Main_Ingredient": "",
     "Cuisine": "Asian",
@@ -86,4 +119,13 @@ search = {
     "Sample": 5
 }
 
-search_df(search)
+new_recip = {
+    "Recipe": "Test",
+    "Type": "Meal",
+    "Main_Ingredient": "",
+    "Cuisine": "American",
+    "Source": "Made it up",
+}
+
+# find_recipes(search)
+# sadd_recipe(new_recip)
