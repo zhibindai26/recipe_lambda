@@ -128,4 +128,4 @@ new_recip = {
 }
 
 # find_recipes(search)
-# sadd_recipe(new_recip)
+# add_recipe(new_recip)
