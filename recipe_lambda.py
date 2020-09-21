@@ -17,8 +17,24 @@ def download_recipes():
     return df
 
 
-def find_recipes(search_dict):
+def write_df_to_csv_on_s3(df):
+    """ Write a dataframe to a CSV on S3 """
 
+    # Create buffer
+    csv_buffer = StringIO()
+
+    # Write dataframe to buffer
+    df.to_csv(csv_buffer, sep=",")
+
+    # Create S3 object
+    s3 = boto3.resource("s3")
+
+    # Write buffer to S3 object
+    s3.Object(S3_BUCKET, RECIPE_CSV).put(Body=csv_buffer.getvalue())
+
+
+def find_recipes(search_dict):
+    """ Filter recipes based on provided search criteria """
     try:
         recipes_df = download_recipes()
         recipe = search_dict["Recipe"].lower()
@@ -61,10 +77,9 @@ def find_recipes(search_dict):
             }
             if len(recipes_df) > sample:
                 final_json["body"] = source_df.sample(sample).to_json(orient='records')
-                return final_json
             else:
                 final_json["body"] = source_df.to_json(orient='records')
-                return final_json
+            return final_json
         else:
             return {
                 "status_code": 404,
@@ -74,11 +89,12 @@ def find_recipes(search_dict):
     except Exception as e:
         return {
             "status_code": 400,
-            "message": str(e)
+            "message": f"Recipe search failed: {e}"
         }
 
 
 def add_recipe(new_recipe):
+    """ Add a new recipe to the recipe list """
     try:
         recipes_df = download_recipes()
         updated_recipes_df = recipes_df.append(new_recipe, ignore_index=True)
@@ -93,39 +109,3 @@ def add_recipe(new_recipe):
             "message": f"Adding new recipe failed: {e}"
         }
 
-
-def write_df_to_csv_on_s3(df):
-    """ Write a dataframe to a CSV on S3 """
-
-    # Create buffer
-    csv_buffer = StringIO()
-
-    # Write dataframe to buffer
-    df.to_csv(csv_buffer, sep=",")
-
-    # Create S3 object
-    s3 = boto3.resource("s3")
-
-    # Write buffer to S3 object
-    s3.Object(S3_BUCKET, RECIPE_CSV).put(Body=csv_buffer.getvalue())
-
-
-search = {
-    "Recipe": "",
-    "Type": "Meal",
-    "Main_Ingredient": "",
-    "Cuisine": "Asian",
-    "Source": "",
-    "Sample": 5
-}
-
-new_recip = {
-    "Recipe": "Test",
-    "Type": "Meal",
-    "Main_Ingredient": "",
-    "Cuisine": "American",
-    "Source": "Made it up",
-}
-
-# find_recipes(search)
-# add_recipe(new_recip)
