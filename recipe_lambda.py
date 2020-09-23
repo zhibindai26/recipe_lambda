@@ -33,6 +33,15 @@ def write_df_to_csv_on_s3(df):
     s3.Object(S3_BUCKET, RECIPE_CSV).put(Body=csv_buffer.getvalue())
 
 
+def create_return_object(status_code, message, body):
+    return {
+        "status_code": status_code,
+        "Content-Type": "application/json",
+        "message": message,
+        "body": body
+    }
+
+
 def find_recipes(search_dict):
     """ Filter recipes based on provided search criteria """
     try:
@@ -70,27 +79,22 @@ def find_recipes(search_dict):
             source_df = cuisine_df
 
         if len(recipes_df) > 0:
-            final_json = {
-                "status_code": 200,
-                "message": "Recipes found",
-                "body": ""
-            }
+            status_code = 200
+            message = "Recipes found"
             if len(recipes_df) > sample:
-                final_json["body"] = source_df.sample(sample).to_json(orient='records')
+                body = source_df.sample(sample).to_json(orient='records')
             else:
-                final_json["body"] = source_df.to_json(orient='records')
-            return final_json
+                body = source_df.to_json(orient='records')
+            return create_return_object(status_code, message, body)
+
         else:
-            return {
-                "status_code": 404,
-                "message": "No recipes found",
-                "body": ""
-            }
+            status_code = 400
+            message = "No recipes found"
+            return create_return_object(status_code, message, "")
     except Exception as e:
-        return {
-            "status_code": 400,
-            "message": f"Recipe search failed: {e}"
-        }
+        status_code = 400
+        message = f"Recipe search failed: {e}"
+        return create_return_object(status_code, message, "")
 
 
 def add_recipe(new_recipe):
@@ -99,13 +103,11 @@ def add_recipe(new_recipe):
         recipes_df = download_recipes()
         updated_recipes_df = recipes_df.append(new_recipe, ignore_index=True)
         write_df_to_csv_on_s3(updated_recipes_df)
-        return {
-            "status_code": 200,
-            "message": f"{new_recipe['Recipe']} added to recipes list"
-        }
+        status_code = 200
+        message = f"{new_recipe['Recipe']} added to recipes list"
+        return create_return_object(status_code, message, "")
     except Exception as e:
-        return {
-            "status_code": 400,
-            "message": f"Adding new recipe failed: {e}"
-        }
+        status_code = 400
+        message = f"Adding new recipe failed: {e}"
+        return create_return_object(status_code, message, "")
 

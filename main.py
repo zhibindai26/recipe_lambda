@@ -8,8 +8,4 @@ def main(event, context):
         response_obj = add_recipe(event)
     else:
         response_obj = find_recipes(event)
-
-    response_obj["headers"] = {
-            "Content-Type": "application/json"
-        }
     return response_obj
