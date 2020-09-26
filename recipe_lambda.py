@@ -36,7 +36,7 @@ def write_df_to_csv_on_s3(df):
 def create_return_object(status_code, message, body):
     """ Create return object """
     return {
-        "status_code": status_code,
+        "statusCode": status_code,
         "Content-Type": "application/json",
         "message": message,
         "body": body
@@ -52,7 +52,7 @@ def find_recipes(search_dict):
         ingredient = search_dict["main_ingredient"]
         cuisine = search_dict["cuisine"]
         source = search_dict["source"]
-        sample = search_dict["sample"]
+        sample = int(search_dict["sample"])
 
         if not sample:
             sample = 5
@@ -105,7 +105,8 @@ def add_recipe(new_recipe):
     """ Add a new recipe to the recipe list """
     try:
         recipes_df = download_recipes()
-        updated_recipes_df = recipes_df.append(new_recipe, ignore_index=True)
+        new_recipe_cleaned = clean_new_recipe_dict(new_recipe)
+        updated_recipes_df = recipes_df.append(new_recipe_cleaned, ignore_index=True)
         write_df_to_csv_on_s3(updated_recipes_df)
         status_code = 200
         message = f"{new_recipe['Recipe']} added to recipes list"
@@ -114,3 +115,15 @@ def add_recipe(new_recipe):
         status_code = 400
         message = f"Adding new recipe failed: {e}"
         return create_return_object(status_code, message, "")
+
+
+def clean_new_recipe_dict(new_recipe_dict):
+    return {
+        "Recipe": new_recipe_dict["Recipe"],
+        "Type": new_recipe_dict["Type"],
+        "Main_Ingredient": new_recipe_dict["Main_Ingredient"],
+        "Cuisine": new_recipe_dict["Cuisine"],
+        "Source": new_recipe_dict["Source"],
+        "Page": new_recipe_dict["Page"],
+        "Link": new_recipe_dict["Link"]
+    }
