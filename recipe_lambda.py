@@ -34,6 +34,7 @@ def write_df_to_csv_on_s3(df):
 
 
 def create_return_object(status_code, message, body):
+    """ Create return object """
     return {
         "status_code": status_code,
         "Content-Type": "application/json",
@@ -46,12 +47,15 @@ def find_recipes(search_dict):
     """ Filter recipes based on provided search criteria """
     try:
         recipes_df = download_recipes()
-        recipe = search_dict["Recipe"].lower()
-        food_type = search_dict["Type"]
-        ingredient = search_dict["Main_Ingredient"]
-        cuisine = search_dict["Cuisine"]
-        source = search_dict["Source"]
-        sample = search_dict["Sample"]
+        recipe = search_dict["recipe"].lower()
+        food_type = search_dict["type"]
+        ingredient = search_dict["main_ingredient"]
+        cuisine = search_dict["cuisine"]
+        source = search_dict["source"]
+        sample = search_dict["sample"]
+
+        if not sample:
+            sample = 5
 
         if recipe:
             recipe_df = recipes_df[recipes_df['Recipe'].str.contains(recipe, case=False, na=False)]
@@ -110,4 +114,3 @@ def add_recipe(new_recipe):
         status_code = 400
         message = f"Adding new recipe failed: {e}"
         return create_return_object(status_code, message, "")
-
