@@ -1,4 +1,5 @@
 from recipe_lambda import add_recipe, find_recipes
+import json
 
 
 def main(event, context):
@@ -12,7 +13,8 @@ def main(event, context):
             response_obj = find_recipes(event)
         return response_obj
     except Exception as e:
-        return {
-            "statusCode": 400,
+        error_msg = {
+            "error": "Exception",
             "message": "Lambda failed with the following error: " + str(e)
         }
+        raise Exception(json.dumps(error_msg))

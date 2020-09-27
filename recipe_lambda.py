@@ -35,9 +35,12 @@ def write_df_to_csv_on_s3(df):
 
 def create_return_object(status_code, message, body):
     """ Create return object """
+
     return {
         "statusCode": status_code,
-        "Content-Type": "application/json",
+        "headers": {
+            "Content-Type": "application/json"
+        },
         "message": message,
         "body": body
     }
@@ -45,79 +48,65 @@ def create_return_object(status_code, message, body):
 
 def find_recipes(search_dict):
     """ Filter recipes based on provided search criteria """
-    try:
-        recipes_df = download_recipes()
-        recipe = search_dict["recipe"].lower()
-        food_type = search_dict["type"]
-        ingredient = search_dict["main_ingredient"]
-        cuisine = search_dict["cuisine"]
-        source = search_dict["source"]
-        sample = int(search_dict["sample"])
+    recipes_df = download_recipes()
+    recipe = search_dict["recipe"].lower()
+    food_type = search_dict["type"]
+    ingredient = search_dict["main_ingredient"]
+    cuisine = search_dict["cuisine"]
+    source = search_dict["source"]
+    sample = int(search_dict["sample"])
 
-        if not sample:
-            sample = 5
+    if not sample:
+        sample = 5
 
-        if recipe:
-            recipe_df = recipes_df[recipes_df['Recipe'].str.contains(recipe, case=False, na=False)]
+    if recipe:
+        recipe_df = recipes_df[recipes_df['Recipe'].str.contains(recipe, case=False, na=False)]
+    else:
+        recipe_df = recipes_df
+
+    if food_type:
+        type_df = recipe_df[recipe_df['Type'] == food_type]
+    else:
+        type_df = recipe_df
+
+    if ingredient:
+        ingredient_df = type_df[type_df['Ingredient'] == ingredient]
+    else:
+        ingredient_df = type_df
+
+    if cuisine:
+        cuisine_df = ingredient_df[ingredient_df['Cuisine'] == cuisine]
+    else:
+        cuisine_df = ingredient_df
+
+    if source:
+        source_df = cuisine_df[cuisine_df['Source'] == source]
+    else:
+        source_df = cuisine_df
+
+    if len(recipes_df) > 0:
+        status_code = 200
+        message = "Recipes found"
+        if len(recipes_df) > sample:
+            body = source_df.sample(sample).to_json(orient='records')
         else:
-            recipe_df = recipes_df
-
-        if food_type:
-            type_df = recipe_df[recipe_df['Type'] == food_type]
-        else:
-            type_df = recipe_df
-
-        if ingredient:
-            ingredient_df = type_df[type_df['Ingredient'] == ingredient]
-        else:
-            ingredient_df = type_df
-
-        if cuisine:
-            cuisine_df = ingredient_df[ingredient_df['Cuisine'] == cuisine]
-        else:
-            cuisine_df = ingredient_df
-
-        if source:
-            source_df = cuisine_df[cuisine_df['Source'] == source]
-        else:
-            source_df = cuisine_df
-
-        if len(recipes_df) > 0:
-            status_code = 200
-            message = "Recipes found"
-            if len(recipes_df) > sample:
-                body = source_df.sample(sample).to_json(orient='records')
-            else:
-                body = source_df.to_json(orient='records')
-            return create_return_object(status_code, message, body)
-
-        else:
-            status_code = 400
-            message = "No recipes found"
-            return create_return_object(status_code, message, "")
-    except Exception as e:
-        status_code = 400
-        message = f"Recipe search failed: {e}"
-        return create_return_object(status_code, message, "")
+            body = source_df.to_json(orient='records')
+        return create_return_object(status_code, message, body)
 
 
 def add_recipe(new_recipe):
     """ Add a new recipe to the recipe list """
-    try:
-        recipes_df = download_recipes()
-        new_recipe_cleaned = clean_new_recipe_dict(new_recipe)
-        updated_recipes_df = recipes_df.append(new_recipe_cleaned, ignore_index=True)
-        write_df_to_csv_on_s3(updated_recipes_df)
-        status_code = 200
-        message = f"{new_recipe['Recipe']} added to recipes list"
-        return create_return_object(status_code, message, "")
-    except Exception as e:
-        status_code = 400
-        message = f"Adding new recipe failed: {e}"
-        return create_return_object(status_code, message, "")
+
+    recipes_df = download_recipes()
+    new_recipe_cleaned = clean_new_recipe_dict(new_recipe)
+    updated_recipes_df = recipes_df.append(new_recipe_cleaned, ignore_index=True)
+    write_df_to_csv_on_s3(updated_recipes_df)
+    message = f"{new_recipe['Recipe']} added to recipes list"
+    return create_return_object(200, message, "")
 
 
 def clean_new_recipe_dict(new_recipe_dict):
+    """ Extract only the needed values from the new recipe object """
     return {
         "Recipe": new_recipe_dict["Recipe"],
         "Type": new_recipe_dict["Type"],
@@ -126,4 +115,4 @@ def clean_new_recipe_dict(new_recipe_dict):
         "Source": new_recipe_dict["Source"],
         "Page": new_recipe_dict["Page"],
         "Link": new_recipe_dict["Link"]
-    }
+        }
