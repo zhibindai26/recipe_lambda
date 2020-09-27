@@ -91,7 +91,11 @@ def find_recipes(search_dict):
             body = source_df.sample(sample).to_json(orient='records')
         else:
             body = source_df.to_json(orient='records')
-        return create_return_object(status_code, message, body)
+    else:
+        status_code = 200
+        message = "Recipes found"
+        body = ""
+    return create_return_object(status_code, message, body)
 
 
 def add_recipe(new_recipe):
@@ -107,6 +111,7 @@ def add_recipe(new_recipe):
 
 def clean_new_recipe_dict(new_recipe_dict):
     """ Extract only the needed values from the new recipe object """
+
     return {
         "Recipe": new_recipe_dict["Recipe"],
         "Type": new_recipe_dict["Type"],
