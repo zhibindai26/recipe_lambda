@@ -84,17 +84,29 @@ def find_recipes(search_dict):
     else:
         source_df = cuisine_df
 
+    final_df = source_df
+    food_type_ls = final_df['Type'].to_list()
+    cuisine_ls = final_df['Cuisine'].to_list()
+    source_ls = final_df['Source'].to_list()
+    main_ingredient_ls = final_df['Ingredient'].to_list()
+
+    body = {}
+    body['Type'] = food_type_ls
+    body['Cuisine'] = cuisine_ls
+    body['Source'] = source_ls
+    body['Main_Ingredient'] = main_ingredient_ls
+
     if len(recipes_df) > 0:
         status_code = 200
         message = "Recipes found"
         if len(recipes_df) > sample:
-            body = source_df.sample(sample).to_json(orient='records')
+            body['Recipes'] = source_df.sample(sample).to_json(orient='records')
         else:
-            body = source_df.to_json(orient='records')
+            body['Recipes'] = source_df.to_json(orient='records')
     else:
         status_code = 200
-        message = "Recipes found"
-        body = ""
+        message = "Recipes not found"
+        body['Recipes'] = ""
     return create_return_object(status_code, message, body)
 
 
