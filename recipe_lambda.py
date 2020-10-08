@@ -56,6 +56,12 @@ def find_recipes(search_dict):
     source = search_dict["source"]
     sample = int(search_dict["sample"])
 
+    # return lists of unique category values for dropdown lists
+    meal_type_ls = sorted(recipes_df['Type'].dropna().unique())
+    cuisine_ls = sorted(recipes_df['Cuisine'].dropna().unique())
+    source_ls = sorted(recipes_df['Source'].dropna().unique())
+    main_ingredient_ls = sorted(recipes_df['Main_Ingredient'].dropna().unique())
+
     if not sample:
         sample = 5
 
@@ -70,7 +76,7 @@ def find_recipes(search_dict):
         type_df = recipe_df
 
     if ingredient:
-        ingredient_df = type_df[type_df['Ingredient'] == ingredient]
+        ingredient_df = type_df[type_df['Main_Ingredient'] == ingredient]
     else:
         ingredient_df = type_df
 
@@ -84,22 +90,16 @@ def find_recipes(search_dict):
     else:
         source_df = cuisine_df
 
-    final_df = source_df
-    food_type_ls = final_df['Type'].to_list()
-    cuisine_ls = final_df['Cuisine'].to_list()
-    source_ls = final_df['Source'].to_list()
-    main_ingredient_ls = final_df['Ingredient'].to_list()
-
     body = {}
-    body['Type'] = food_type_ls
+    body['Type'] = meal_type_ls
     body['Cuisine'] = cuisine_ls
     body['Source'] = source_ls
     body['Main_Ingredient'] = main_ingredient_ls
 
-    if len(recipes_df) > 0:
+    if len(source_df) > 0:
         status_code = 200
         message = "Recipes found"
-        if len(recipes_df) > sample:
+        if len(source_df) > sample:
             body['Recipes'] = source_df.sample(sample).to_json(orient='records')
         else:
             body['Recipes'] = source_df.to_json(orient='records')
