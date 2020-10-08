@@ -1,4 +1,5 @@
 from io import StringIO
+import json
 import boto3
 import pandas as pd
 
@@ -55,58 +56,64 @@ def find_recipes(search_dict):
     cuisine = search_dict["cuisine"]
     source = search_dict["source"]
     sample = int(search_dict["sample"])
-
-    # return lists of unique category values for dropdown lists
-    meal_type_ls = sorted(recipes_df['Type'].dropna().unique())
-    cuisine_ls = sorted(recipes_df['Cuisine'].dropna().unique())
-    source_ls = sorted(recipes_df['Source'].dropna().unique())
-    main_ingredient_ls = sorted(recipes_df['Main_Ingredient'].dropna().unique())
-
-    if not sample:
-        sample = 5
-
-    if recipe:
-        recipe_df = recipes_df[recipes_df['Recipe'].str.contains(recipe, case=False, na=False)]
-    else:
-        recipe_df = recipes_df
-
-    if food_type:
-        type_df = recipe_df[recipe_df['Type'] == food_type]
-    else:
-        type_df = recipe_df
-
-    if ingredient:
-        ingredient_df = type_df[type_df['Main_Ingredient'] == ingredient]
-    else:
-        ingredient_df = type_df
-
-    if cuisine:
-        cuisine_df = ingredient_df[ingredient_df['Cuisine'] == cuisine]
-    else:
-        cuisine_df = ingredient_df
-
-    if source:
-        source_df = cuisine_df[cuisine_df['Source'] == source]
-    else:
-        source_df = cuisine_df
-
+    get_categories = search_dict["get_categories"]
     body = {}
-    body['Type'] = meal_type_ls
-    body['Cuisine'] = cuisine_ls
-    body['Source'] = source_ls
-    body['Main_Ingredient'] = main_ingredient_ls
 
-    if len(source_df) > 0:
+    if get_categories == 'true':
+        # return lists of unique category values for dropdown lists
+        meal_type_ls = json.loads(json.dumps(sorted(recipes_df['Type'].dropna().unique())))
+        cuisine_ls = json.loads(json.dumps(sorted(recipes_df['Cuisine'].dropna().unique())))
+        source_ls = json.loads(json.dumps(sorted(recipes_df['Source'].dropna().unique())))
+        main_ingredient_ls = json.loads(json.dumps(sorted(recipes_df['Main_Ingredient'].dropna().unique())))
+
         status_code = 200
-        message = "Recipes found"
-        if len(source_df) > sample:
-            body['Recipes'] = source_df.sample(sample).to_json(orient='records')
-        else:
-            body['Recipes'] = source_df.to_json(orient='records')
+        message = "Returning Recipe Category Values"
+        body['Type'] = meal_type_ls
+        body['Cuisine'] = cuisine_ls
+        body['Source'] = source_ls
+        body['Main_Ingredient'] = main_ingredient_ls
+
     else:
-        status_code = 200
-        message = "Recipes not found"
-        body['Recipes'] = ""
+        if not sample:
+            sample = 5
+
+        if recipe:
+            recipe_df = recipes_df[recipes_df['Recipe'].str.contains(recipe, case=False, na=False)]
+        else:
+            recipe_df = recipes_df
+
+        if food_type:
+            type_df = recipe_df[recipe_df['Type'] == food_type]
+        else:
+            type_df = recipe_df
+
+        if ingredient:
+            ingredient_df = type_df[type_df['Main_Ingredient'] == ingredient]
+        else:
+            ingredient_df = type_df
+
+        if cuisine:
+            cuisine_df = ingredient_df[ingredient_df['Cuisine'] == cuisine]
+        else:
+            cuisine_df = ingredient_df
+
+        if source:
+            source_df = cuisine_df[cuisine_df['Source'] == source]
+        else:
+            source_df = cuisine_df
+
+        if len(source_df) > 0:
+            status_code = 200
+            message = "Recipes found"
+            if len(source_df) > sample:
+                body['Recipes'] = json.loads(source_df.sample(sample).to_json(orient='records'))
+            else:
+                body['Recipes'] = json.loads(source_df.to_json(orient='records'))
+        else:
+            status_code = 200
+            message = "Recipes not found"
+            body['Recipes'] = ""
+
     return create_return_object(status_code, message, body)
 
 
