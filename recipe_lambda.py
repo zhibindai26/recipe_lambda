@@ -110,7 +110,7 @@ def find_recipes(search_dict):
             else:
                 body['Recipes'] = json.loads(source_df.to_json(orient='records'))
         else:
-            status_code = 200
+            status_code = 400
             message = "Recipes not found"
             body['Recipes'] = ""
 
@@ -122,10 +122,15 @@ def add_recipe(new_recipe):
 
     recipes_df = download_recipes()
     new_recipe_cleaned = clean_new_recipe_dict(new_recipe)
-    updated_recipes_df = recipes_df.append(new_recipe_cleaned, ignore_index=True)
-    write_df_to_csv_on_s3(updated_recipes_df)
-    message = f"{new_recipe['Recipe']} added to recipes list"
-    return create_return_object(200, message, "")
+
+    if new_recipe_cleaned["Recipe"]:
+        updated_recipes_df = recipes_df.append(new_recipe_cleaned, ignore_index=True)
+        write_df_to_csv_on_s3(updated_recipes_df)
+        message = f"{new_recipe['Recipe']} added to recipes list"
+        return create_return_object(200, message, "")
+    else:
+        message = "Recipe Name is required"
+        return create_return_object(400, message, "")
 
 
 def clean_new_recipe_dict(new_recipe_dict):
