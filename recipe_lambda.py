@@ -61,11 +61,17 @@ def find_recipes(search_dict):
 
     if get_categories == 'true':
         # return lists of unique category values for dropdown lists
-        meal_type_ls = json.loads(json.dumps(sorted(recipes_df['Type'].dropna().unique())))
-        cuisine_ls = json.loads(json.dumps(sorted(recipes_df['Cuisine'].dropna().unique())))
-        source_ls = json.loads(json.dumps(sorted(recipes_df['Source'].dropna().unique())))
-        main_ingredient_ls = json.loads(json.dumps(sorted(recipes_df['Main_Ingredient'].dropna().unique())))
-
+        meal_type_ls = sorted(recipes_df['Type'].dropna().unique())
+        cuisine_ls = sorted(recipes_df['Cuisine'].dropna().unique())
+        source_ls = sorted(recipes_df['Source'].dropna().unique())
+        main_ingredient_ls = sorted(recipes_df['Main_Ingredient'].dropna().unique())
+        
+        empty_str = ""
+        meal_type_ls.insert(0, empty_str)
+        cuisine_ls.insert(0, empty_str)
+        source_ls.insert(0, empty_str)
+        main_ingredient_ls.insert(0, empty_str)
+        
         status_code = 200
         message = "Returning Recipe Category Values"
         body['Type'] = meal_type_ls
