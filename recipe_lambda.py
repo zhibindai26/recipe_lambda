@@ -90,7 +90,7 @@ def find_recipes(search_dict):
         ingredient = search_dict["main_ingredient"]
         cuisine = search_dict["cuisine"]
         uploader = search_dict["uploader"]
-        source = search_dict["source"].lower()
+        source = search_dict["source"]
         sample = int(search_dict["sample"])
 
         body = {}
