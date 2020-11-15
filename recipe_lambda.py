@@ -14,7 +14,7 @@ def download_recipes():
     response = s3.get_object(Bucket=S3_BUCKET, Key=RECIPE_CSV)
     recipe_csv = response["Body"]
 
-    df = pd.read_csv(recipe_csv, index_col=0).astype({'Page': str})
+    df = pd.read_csv(recipe_csv, index_col=0).fillna('')
     return df
 
 
@@ -47,39 +47,53 @@ def create_return_object(status_code, message, body):
     }
 
 
+def create_categories_obj(recipes_df):
+    """ Create object of various categories """
+    empty_str = ""
+    body = {}    
+    
+    meal_type_ls = sorted(recipes_df['Type'].dropna().unique())
+    cuisine_ls = sorted(recipes_df['Cuisine'].dropna().unique())
+    source_ls = sorted(recipes_df['Source'].dropna().unique())
+    main_ingredient_ls = sorted(recipes_df['Main_Ingredient'].dropna().unique())
+    uploader_ls = sorted(recipes_df['Uploader'].dropna().unique())
+        
+    meal_type_ls.insert(0, empty_str)
+    cuisine_ls.insert(0, empty_str)
+    source_ls.insert(0, empty_str)
+    main_ingredient_ls.insert(0, empty_str)
+    uploader_ls.insert(0, empty_str)
+
+    body['Type'] = meal_type_ls
+    body['Cuisine'] = cuisine_ls
+    body['Source'] = source_ls
+    body['Main_Ingredient'] = main_ingredient_ls
+    body['Uploader'] = uploader_ls
+
+    return body 
+
+
 def find_recipes(search_dict):
     """ Filter recipes based on provided search criteria """
     recipes_df = download_recipes()
-    recipe = search_dict["recipe"].lower()
-    food_type = search_dict["type"]
-    ingredient = search_dict["main_ingredient"]
-    cuisine = search_dict["cuisine"]
-    source = search_dict["source"]
-    sample = int(search_dict["sample"])
-    get_categories = search_dict["get_categories"]
-    body = {}
 
+    get_categories = search_dict["get_categories"]
     if get_categories == 'true':
         # return lists of unique category values for dropdown lists
-        meal_type_ls = sorted(recipes_df['Type'].dropna().unique())
-        cuisine_ls = sorted(recipes_df['Cuisine'].dropna().unique())
-        source_ls = sorted(recipes_df['Source'].dropna().unique())
-        main_ingredient_ls = sorted(recipes_df['Main_Ingredient'].dropna().unique())
-        
-        empty_str = ""
-        meal_type_ls.insert(0, empty_str)
-        cuisine_ls.insert(0, empty_str)
-        source_ls.insert(0, empty_str)
-        main_ingredient_ls.insert(0, empty_str)
-        
         status_code = 200
         message = "Returning Recipe Category Values"
-        body['Type'] = meal_type_ls
-        body['Cuisine'] = cuisine_ls
-        body['Source'] = source_ls
-        body['Main_Ingredient'] = main_ingredient_ls
+        body = create_categories_obj(recipes_df)
 
     else:
+        recipe = search_dict["recipe"].lower()
+        food_type = search_dict["type"]
+        ingredient = search_dict["main_ingredient"]
+        cuisine = search_dict["cuisine"]
+        uploader = search_dict["uploader"]
+        source = search_dict["source"].lower()
+        sample = int(search_dict["sample"])
+
+        body = {}
         if not sample:
             sample = 5
 
@@ -103,18 +117,25 @@ def find_recipes(search_dict):
         else:
             cuisine_df = ingredient_df
 
-        if source:
-            source_df = cuisine_df[cuisine_df['Source'] == source]
-        else:
-            source_df = cuisine_df
+        if uploader:
+            uploader_df = cuisine_df[cuisine_df['Uploader'] == uploader]
+        else: 
+            uploader_df = cuisine_df
 
-        if len(source_df) > 0:
+        if source:
+            source_df = uploader_df[uploader_df['Source'] == source]
+        else:
+            source_df = uploader_df
+
+        final_df = source_df
+
+        if len(final_df) > 0:
             status_code = 200
             message = "Recipes found"
-            if len(source_df) > sample:
-                body['Recipes'] = json.loads(source_df.sample(sample).to_json(orient='records'))
+            if len(final_df) > sample:
+                body['Recipes'] = json.loads(final_df.sample(sample).to_json(orient='records'))
             else:
-                body['Recipes'] = json.loads(source_df.to_json(orient='records'))
+                body['Recipes'] = json.loads(final_df.to_json(orient='records'))
         else:
             status_code = 400
             message = "Recipes not found"
@@ -147,6 +168,7 @@ def clean_new_recipe_dict(new_recipe_dict):
         "Type": new_recipe_dict["Type"],
         "Main_Ingredient": new_recipe_dict["Main_Ingredient"],
         "Cuisine": new_recipe_dict["Cuisine"],
+        "Uploader": new_recipe_dict["Uploader"],
         "Source": new_recipe_dict["Source"],
         "Page": new_recipe_dict["Page"],
         "Link": new_recipe_dict["Link"]
