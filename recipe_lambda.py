@@ -171,5 +171,6 @@ def clean_new_recipe_dict(new_recipe_dict):
         "Uploader": new_recipe_dict["Uploader"],
         "Source": new_recipe_dict["Source"],
         "Page": new_recipe_dict["Page"],
-        "Link": new_recipe_dict["Link"]
+        "Link": new_recipe_dict["Link"],
+        "Notes": new_recipe_dict["Notes"]
         }
